@@ -1,0 +1,50 @@
+{
+  "name": "url-shortener-platform",
+  "version": "1.0.0",
+  "description": "Modern URL shortener platform with analytics",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:all": "node scripts/run-all-tests.js",
+    "test:e2e": "playwright test",
+    "test:api-contract": "node scripts/run-api-contract-tests.js",
+    "test:load": "k6 run tests/load/redirect-load-test.js",
+    "test:performance": "node scripts/run-performance-tests.js",
+    "test:chaos": "node tests/chaos/resilience-test.js",
+    "test:monitoring": "node packages/shared-monitoring/src/tests/runMetricsTests.js",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docs:api": "node scripts/generate-api-docs.js"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@types/node": "^20.5.0",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.0",
+    "@playwright/test": "^1.40.0",
+    "swagger-jsdoc": "^6.2.8",
+    "js-yaml": "^4.1.0",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "axios": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

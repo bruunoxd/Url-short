@@ -1,0 +1,28 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: url-shortener-gateway
+  namespace: url-shortener
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "short.example.com"
+    - "api.short.example.com"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "short.example.com"
+    - "api.short.example.com"
+    tls:
+      mode: SIMPLE
+      credentialName: url-shortener-tls

@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: url-shortener-dev
+
+bases:
+- ../../base
+
+patchesStrategicMerge:
+- patches/url-shortener-deployment.yaml
+- patches/analytics-deployment.yaml
+- patches/user-management-deployment.yaml
+- patches/frontend-deployment.yaml
+
+resources:
+- resources/namespace.yaml
+
+images:
+- name: url-shortener-service
+  newName: ${REGISTRY}/url-shortener-service
+  newTag: dev
+- name: url-shortener-analytics
+  newName: ${REGISTRY}/url-shortener-analytics
+  newTag: dev
+- name: url-shortener-user-management
+  newName: ${REGISTRY}/url-shortener-user-management
+  newTag: dev
+- name: url-shortener-frontend
+  newName: ${REGISTRY}/url-shortener-frontend
+  newTag: dev

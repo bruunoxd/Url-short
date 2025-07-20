@@ -1,0 +1,32 @@
+{
+  "name": "@url-shortener/shared-db",
+  "version": "1.0.0",
+  "description": "Shared database utilities and migrations",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "migrate:up": "node dist/migrations/migrate.js up",
+    "migrate:down": "node dist/migrations/migrate.js down",
+    "migrate:create": "node dist/migrations/create-migration.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "@clickhouse/client": "^0.2.5",
+    "redis": "^4.6.10",
+    "dotenv": "^16.3.1",
+    "generic-pool": "^3.9.0",
+    "@url-shortener/shared-types": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.7",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.0",
+    "@vitest/coverage-v8": "^0.34.0",
+    "pg-mem": "^2.7.0"
+  }
+}

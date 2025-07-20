@@ -1,0 +1,88 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: frontend-vs
+  namespace: url-shortener
+spec:
+  hosts:
+  - "short.example.com"
+  gateways:
+  - url-shortener-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: frontend
+        port:
+          number: 80
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://short.example.com"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      maxAge: "24h"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: api-vs
+  namespace: url-shortener
+spec:
+  hosts:
+  - "api.short.example.com"
+  gateways:
+  - url-shortener-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/urls"
+    route:
+    - destination:
+        host: url-shortener
+        port:
+          number: 80
+  - match:
+    - uri:
+        prefix: "/api/v1/analytics"
+    route:
+    - destination:
+        host: analytics
+        port:
+          number: 80
+  - match:
+    - uri:
+        prefix: "/api/v1/users"
+    - uri:
+        prefix: "/api/v1/auth"
+    route:
+    - destination:
+        host: user-management
+        port:
+          number: 80
+  - route:
+    - destination:
+        host: url-shortener
+        port:
+          number: 80
+    corsPolicy:
+      allowOrigins:
+      - exact: "https://short.example.com"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Authorization
+      - Content-Type
+      maxAge: "24h"

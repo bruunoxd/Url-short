@@ -1,0 +1,144 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: url-shortener-alerts
+  namespace: monitoring
+  labels:
+    app: url-shortener
+    release: prometheus
+spec:
+  groups:
+  # Service availability alerts
+  - name: service-availability
+    rules:
+    - alert: ServiceDown
+      expr: up{job=~"url-shortener.*"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "Service {{ $labels.job }} has been down for more than 2 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/service-down"
+    
+    - alert: HighErrorRate
+      expr: sum(rate(http_requests_duration_seconds_count{status_code=~"5.."}[5m])) by (service) / sum(rate(http_requests_duration_seconds_count[5m])) by (service) > 0.05
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High error rate for {{ $labels.service }}"
+        description: "Service {{ $labels.service }} has a high HTTP error rate (> 5%) for more than 2 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/high-error-rate"
+  
+  # Performance alerts
+  - name: performance
+    rules:
+    - alert: SlowRedirects
+      expr: histogram_quantile(0.95, sum(rate(http_requests_duration_seconds_bucket{route=~"/:shortCode"}[5m])) by (le)) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Slow redirects detected"
+        description: "95th percentile of redirect response time is above 100ms for more than 5 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/slow-redirects"
+    
+    - alert: HighCPUUsage
+      expr: sum(rate(container_cpu_usage_seconds_total{namespace="url-shortener-production", container!="POD", container!=""}[5m])) by (pod) / sum(kube_pod_container_resource_limits_cpu_cores{namespace="url-shortener-production"}) by (pod) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage for {{ $labels.pod }}"
+        description: "Pod {{ $labels.pod }} has high CPU usage (>85% of limit) for more than 10 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/high-cpu-usage"
+    
+    - alert: HighMemoryUsage
+      expr: sum(container_memory_working_set_bytes{namespace="url-shortener-production", container!="POD", container!=""}) by (pod) / sum(kube_pod_container_resource_limits_memory_bytes{namespace="url-shortener-production"}) by (pod) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage for {{ $labels.pod }}"
+        description: "Pod {{ $labels.pod }} has high memory usage (>85% of limit) for more than 10 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/high-memory-usage"
+  
+  # Database alerts
+  - name: database
+    rules:
+    - alert: LowDatabaseConnections
+      expr: database_connections_active{database="postgres"} < 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Low database connections"
+        description: "The number of active database connections is below 5 for more than 5 minutes. This might indicate connection issues."
+        runbook_url: "https://wiki.example.com/runbooks/database-connections"
+    
+    - alert: SlowDatabaseQueries
+      expr: histogram_quantile(0.95, sum(rate(database_query_duration_seconds_bucket[5m])) by (le, query_type)) > 1.0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Slow database queries for {{ $labels.query_type }}"
+        description: "95th percentile of database query duration for {{ $labels.query_type }} is above 1 second for more than 5 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/slow-database-queries"
+    
+    - alert: HighDatabaseCPU
+      expr: avg(rate(container_cpu_usage_seconds_total{namespace="url-shortener-production", pod=~"postgres.*|clickhouse.*"}[5m])) by (pod) / avg(kube_pod_container_resource_limits_cpu_cores{namespace="url-shortener-production", pod=~"postgres.*|clickhouse.*"}) by (pod) > 0.8
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High database CPU usage for {{ $labels.pod }}"
+        description: "Database pod {{ $labels.pod }} has high CPU usage (>80% of limit) for more than 15 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/database-cpu"
+  
+  # Cache alerts
+  - name: cache
+    rules:
+    - alert: LowCacheHitRatio
+      expr: cache_hit_ratio{cache_type="redis"} < 0.7
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Low cache hit ratio"
+        description: "Redis cache hit ratio is below 70% for more than 15 minutes. This might indicate cache inefficiency or invalidation issues."
+        runbook_url: "https://wiki.example.com/runbooks/cache-hit-ratio"
+    
+    - alert: HighRedisMemoryUsage
+      expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High Redis memory usage"
+        description: "Redis memory usage is above 80% for more than 10 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/redis-memory"
+  
+  # Business metrics alerts
+  - name: business-metrics
+    rules:
+    - alert: RedirectRateDropped
+      expr: rate(url_shortener_redirects_total[5m]) < 0.5 * avg_over_time(rate(url_shortener_redirects_total[5m])[1d:5m])
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redirect rate dropped significantly"
+        description: "The rate of URL redirects has dropped by more than 50% compared to the 1-day average."
+        runbook_url: "https://wiki.example.com/runbooks/redirect-rate-drop"
+    
+    - alert: HighErrorRateForRedirects
+      expr: sum(rate(url_shortener_redirects_total{status="error"}[5m])) / sum(rate(url_shortener_redirects_total[5m])) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate for redirects"
+        description: "More than 5% of redirects are resulting in errors for more than 5 minutes."
+        runbook_url: "https://wiki.example.com/runbooks/redirect-errors"

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-config
+  namespace: url-shortener
+data:
+  config.json: |
+    {
+      "logLevel": "info",
+      "metrics": {
+        "enabled": true,
+        "collectDefaultMetrics": true
+      },
+      "clickEvents": {
+        "batchSize": 100,
+        "flushIntervalMs": 5000
+      }
+    }

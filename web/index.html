@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - Encurtador de Links</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="url"], input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="url"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .short-url {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        .short-url a {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .recent-urls {
+            margin-top: 30px;
+        }
+
+        .recent-urls h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .url-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .url-original {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .url-short {
+            color: #1976d2;
+            font-weight: 600;
+        }
+
+        .url-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 URL Shortener</h1>
+            <p>Encurte seus links e acompanhe as estatísticas em tempo real</p>
+        </div>
+
+        <form id="shortenForm">
+            <div class="form-group">
+                <label for="originalUrl">URL Original:</label>
+                <input type="url" id="originalUrl" placeholder="https://exemplo.com/minha-url-muito-longa" required>
+            </div>
+
+            <div class="form-group">
+                <label for="customCode">Código Personalizado (opcional):</label>
+                <input type="text" id="customCode" placeholder="meulink" maxlength="20">
+            </div>
+
+            <button type="submit" class="btn" id="shortenBtn">
+                Encurtar URL
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processando...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <div class="result" id="result">
+            <h3>✅ URL Encurtada com Sucesso!</h3>
+            <div class="short-url">
+                <strong>Link Encurtado:</strong><br>
+                <a href="#" id="shortLink" target="_blank"></a>
+                <button class="copy-btn" onclick="copyToClipboard()">Copiar</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="clickCount">0</div>
+                    <div class="stat-label">Cliques</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="createdDate">Hoje</div>
+                    <div class="stat-label">Criado</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="urlStatus">Ativo</div>
+                    <div class="stat-label">Status</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="recent-urls" id="recentUrls">
+            <h3>📊 URLs Recentes</h3>
+            <div id="urlsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        // Carregar URLs recentes ao inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecentUrls();
+        });
+
+        // Manipular envio do formulário
+        document.getElementById('shortenForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const originalUrl = document.getElementById('originalUrl').value;
+            const customCode = document.getElementById('customCode').value;
+            
+            if (!isValidUrl(originalUrl)) {
+                showError('Por favor, insira uma URL válida');
+                return;
+            }
+            
+            await shortenUrl(originalUrl, customCode);
+        });
+
+        async function shortenUrl(originalUrl, customCode = '') {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            
+            // Mostrar loading
+            loading.style.display = 'block';
+            result.classList.remove('show');
+            error.style.display = 'none';
+            success.style.display = 'none';
+            
+            try {
+                // Fazer chamada real à API
+                const response = await fetch('/api/shorten', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        originalUrl: originalUrl,
+                        customCode: customCode
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Mostrar resultado
+                    displayResult(data.data);
+                    showSuccess('URL encurtada com sucesso!');
+                    
+                    // Limpar formulário
+                    document.getElementById('shortenForm').reset();
+                    
+                    // Recarregar URLs recentes
+                    loadRecentUrls();
+                } else {
+                    showError(data.message || 'Erro ao encurtar URL');
+                }
+            } catch (err) {
+                showError('Erro de conexão. Tente novamente.');
+                console.error('Erro:', err);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResult(data) {
+            const result = document.getElementById('result');
+            const shortLink = document.getElementById('shortLink');
+            const clickCount = document.getElementById('clickCount');
+            const createdDate = document.getElementById('createdDate');
+            const urlStatus = document.getElementById('urlStatus');
+            
+            const shortUrl = `http://localhost:3000/${data.shortCode}`;
+            
+            shortLink.href = shortUrl;
+            shortLink.textContent = shortUrl;
+            clickCount.textContent = data.clickCount || 0;
+            createdDate.textContent = formatDate(data.createdAt);
+            urlStatus.textContent = data.isActive ? 'Ativo' : 'Inativo';
+            
+            result.classList.add('show');
+        }
+
+        async function loadRecentUrls() {
+            try {
+                // Carregar URLs recentes da API
+                const response = await fetch('/api/urls');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayRecentUrls(data.data);
+                }
+            } catch (err) {
+                console.error('Erro ao carregar URLs recentes:', err);
+            }
+        }
+
+        function displayRecentUrls(urls) {
+            const urlsList = document.getElementById('urlsList');
+            
+            if (urls.length === 0) {
+                urlsList.innerHTML = '<p style="text-align: center; color: #666;">Nenhuma URL encurtada ainda</p>';
+                return;
+            }
+            
+            urlsList.innerHTML = urls.map(url => `
+                <div class="url-item">
+                    <div class="url-original">${truncateUrl(url.originalUrl, 60)}</div>
+                    <div class="url-short">
+                        <a href="http://localhost:3000/${url.shortCode}" target="_blank">
+                            localhost:3000/${url.shortCode}
+                        </a>
+                    </div>
+                    <div class="url-stats">
+                        <span>${url.clickCount} cliques</span>
+                        <span>${formatDate(url.createdAt)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Chamada real à API
+        async function simulateApiCall(originalUrl, customCode) {
+            const response = await fetch(`${API_BASE}/shorten`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    originalUrl: originalUrl,
+                    customCode: customCode
+                })
+            });
+            
+            const data = await response.json();
+            return data;
+        }
+
+        async function simulateRecentUrls() {
+            try {
+                const response = await fetch(`${API_BASE}/urls`);
+                const data = await response.json();
+                return data.success ? data.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar URLs:', error);
+                return [];
+            }
+        }
+
+        // Funções utilitárias
+        function generateShortCode() {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function truncateUrl(url, maxLength) {
+            if (url.length <= maxLength) return url;
+            return url.substring(0, maxLength) + '...';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) return 'Hoje';
+            if (diffDays === 2) return 'Ontem';
+            if (diffDays <= 7) return `${diffDays} dias atrás`;
+            
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function copyToClipboard() {
+            const shortLink = document.getElementById('shortLink');
+            navigator.clipboard.writeText(shortLink.href).then(() => {
+                showSuccess('Link copiado para a área de transferência!');
+            }).catch(() => {
+                // Fallback para navegadores mais antigos
+                const textArea = document.createElement('textarea');
+                textArea.value = shortLink.href;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showSuccess('Link copiado para a área de transferência!');
+            });
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+            setTimeout(() => {
+                error.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const success = document.getElementById('success');
+            success.textContent = message;
+            success.style.display = 'block';
+            setTimeout(() => {
+                success.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

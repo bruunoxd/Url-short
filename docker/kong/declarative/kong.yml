@@ -1,0 +1,328 @@
+_format_version: "2.1"
+_transform: true
+
+# Upstreams for load balancing
+upstreams:
+  - name: url-shortener-upstream
+    algorithm: round-robin
+    healthchecks:
+      active:
+        http_path: /health
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 2
+    targets:
+      - target: url-shortener:3001
+        weight: 100
+  
+  - name: analytics-upstream
+    algorithm: round-robin
+    healthchecks:
+      active:
+        http_path: /health
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 2
+    targets:
+      - target: analytics:3002
+        weight: 100
+  
+  - name: user-management-upstream
+    algorithm: round-robin
+    healthchecks:
+      active:
+        http_path: /health
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 2
+    targets:
+      - target: user-management:3003
+        weight: 100
+
+services:
+  # URL Shortener Service
+  - name: url-shortener-service
+    host: url-shortener-upstream
+    protocol: http
+    connect_timeout: 60000
+    read_timeout: 60000
+    write_timeout: 60000
+    retries: 5
+    routes:
+      - name: url-shortener-api-v1-route
+        paths:
+          - /api/v1/urls
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: url-shortener-api-v2-route
+        paths:
+          - /api/v2/urls
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: url-shortener-redirect-route
+        paths:
+          - /r/
+        strip_path: true
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: url-shortener-health-route
+        paths:
+          - /health/url-shortener
+        strip_path: true
+        preserve_host: true
+        protocols:
+          - http
+          - https
+        destinations:
+          - port: 3001
+            path: /health
+
+  # Analytics Service
+  - name: analytics-service
+    host: analytics-upstream
+    protocol: http
+    connect_timeout: 60000
+    read_timeout: 60000
+    write_timeout: 60000
+    retries: 5
+    routes:
+      - name: analytics-api-v1-route
+        paths:
+          - /api/v1/analytics
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: analytics-api-v2-route
+        paths:
+          - /api/v2/analytics
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: analytics-health-route
+        paths:
+          - /health/analytics
+        strip_path: true
+        preserve_host: true
+        protocols:
+          - http
+          - https
+        destinations:
+          - port: 3002
+            path: /health
+
+  # User Management Service
+  - name: user-management-service
+    host: user-management-upstream
+    protocol: http
+    connect_timeout: 60000
+    read_timeout: 60000
+    write_timeout: 60000
+    retries: 5
+    routes:
+      - name: auth-api-v1-route
+        paths:
+          - /api/v1/auth
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: auth-api-v2-route
+        paths:
+          - /api/v2/auth
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: users-api-v1-route
+        paths:
+          - /api/v1/users
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: users-api-v2-route
+        paths:
+          - /api/v2/users
+        strip_path: false
+        preserve_host: true
+        protocols:
+          - http
+          - https
+      - name: user-management-health-route
+        paths:
+          - /health/user-management
+        strip_path: true
+        preserve_host: true
+        protocols:
+          - http
+          - https
+        destinations:
+          - port: 3003
+            path: /health
+
+# Global plugins
+plugins:
+  # Global rate limiting plugin
+  - name: rate-limiting
+    config:
+      minute: 60
+      limit_by: ip
+      policy: redis
+      redis_host: redis
+      redis_port: 6379
+      redis_timeout: 2000
+      fault_tolerant: true
+      hide_client_headers: false
+
+  # CORS plugin
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+      headers:
+        - Content-Type
+        - Authorization
+        - X-User-Id
+        - X-Request-Id
+        - X-API-Key
+      credentials: true
+      max_age: 3600
+
+  # Request transformer plugin for adding headers
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - X-Request-ID:$(uuid)
+          - X-Service-Time:$(date_iso8601)
+
+  # Response transformer plugin
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - X-Powered-By:URL-Shortener-Platform
+          - X-Content-Type-Options:nosniff
+          - X-Frame-Options:DENY
+          - X-XSS-Protection:1; mode=block
+
+  # JWT Authentication plugin
+  - name: jwt
+    config:
+      claims_to_verify:
+        - exp
+      key_claim_name: kid
+      secret_is_base64: false
+      run_on_preflight: false
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - Authorization
+
+# Service-specific plugins
+consumers:
+  - username: api-client
+    jwt_secrets:
+      - key: "shared-secret"
+        algorithm: "HS256"
+        secret: "s3cr3t-k3y-f0r-d3m0-purp0s3s-0nly"
+
+# Route-specific plugins
+plugins:
+  # Authentication for user management routes - v1
+  - name: jwt
+    route: auth-api-v1-route
+    config:
+      anonymous: null
+  
+  - name: jwt
+    route: users-api-v1-route
+    config:
+      anonymous: null
+  
+  # Authentication for user management routes - v2
+  - name: jwt
+    route: auth-api-v2-route
+    config:
+      anonymous: null
+  
+  - name: jwt
+    route: users-api-v2-route
+    config:
+      anonymous: null
+  
+  # Rate limiting for URL shortener API - v1
+  - name: rate-limiting
+    route: url-shortener-api-v1-route
+    config:
+      minute: 30
+      hour: 300
+      limit_by: credential
+      policy: redis
+  
+  # Rate limiting for URL shortener API - v2
+  - name: rate-limiting
+    route: url-shortener-api-v2-route
+    config:
+      minute: 50  # Higher limit for v2 API
+      hour: 500
+      limit_by: credential
+      policy: redis
+  
+  # IP restriction for admin routes - v1
+  - name: ip-restriction
+    route: analytics-api-v1-route
+    config:
+      whitelist:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        
+  # IP restriction for admin routes - v2
+  - name: ip-restriction
+    route: analytics-api-v2-route
+    config:
+      whitelist:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+  
+  # Request size limiting
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10

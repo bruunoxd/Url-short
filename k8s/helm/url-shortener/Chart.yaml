@@ -1,0 +1,29 @@
+apiVersion: v2
+name: url-shortener
+description: A modern URL shortener platform with analytics
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - url-shortener
+  - analytics
+  - microservices
+home: https://github.com/example/url-shortener
+sources:
+  - https://github.com/example/url-shortener
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: rabbitmq
+    version: 11.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: rabbitmq.enabled

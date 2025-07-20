@@ -1,0 +1,188 @@
+# Production values for url-shortener Helm chart
+
+global:
+  environment: production
+  imageRegistry: "ghcr.io/organization"
+  storageClass: "managed-premium"
+
+# URL Shortener Service
+urlShortener:
+  replicaCount: 5
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    minReplicas: 5
+    maxReplicas: 30
+  config:
+    logLevel: info
+    baseUrl: "https://short.example.com"
+
+# Analytics Service
+analytics:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 15
+
+# User Management Service
+userManagement:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 15
+
+# Frontend
+frontend:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 15
+
+# Database configurations
+postgresql:
+  primary:
+    persistence:
+      size: 50Gi
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+  replication:
+    enabled: true
+    readReplicas: 2
+  metrics:
+    enabled: true
+
+redis:
+  architecture: replication
+  master:
+    persistence:
+      size: 20Gi
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  replica:
+    replicaCount: 2
+    persistence:
+      size: 20Gi
+  metrics:
+    enabled: true
+
+rabbitmq:
+  replicaCount: 3
+  persistence:
+    size: 20Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  metrics:
+    enabled: true
+
+# ClickHouse configuration
+clickhouse:
+  replicaCount: 3
+  persistence:
+    size: 100Gi
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+  hosts:
+    - host: short.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+          port: 80
+    - host: api.short.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: url-shortener
+          port: 80
+  tls:
+    - secretName: url-shortener-tls
+      hosts:
+        - short.example.com
+        - api.short.example.com
+
+# Service Mesh Configuration
+serviceMesh:
+  enabled: true
+  istio:
+    enabled: true
+    gateway:
+      enabled: true
+    virtualServices:
+      enabled: true
+    destinationRules:
+      enabled: true
+    peerAuthentication:
+      enabled: true
+      mtls: STRICT
+    authorizationPolicies:
+      enabled: true
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  prometheusRules:
+    enabled: true
+  grafanaDashboards:
+    enabled: true

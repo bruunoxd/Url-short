@@ -1,0 +1,299 @@
+# Default values for url-shortener Helm chart
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  environment: production
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: standard
+
+# Common settings
+common:
+  labels:
+    app: url-shortener
+  annotations: {}
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+
+# URL Shortener Service
+urlShortener:
+  enabled: true
+  name: url-shortener
+  image:
+    repository: url-shortener-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    metrics:
+      - type: Pods
+        pods:
+          metric:
+            name: http_requests_per_second
+          target:
+            type: AverageValue
+            averageValue: 1000
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3001
+  config:
+    logLevel: info
+    baseUrl: "https://short.example.com"
+  secrets:
+    jwtSecret: ""
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - url-shortener
+            topologyKey: "kubernetes.io/hostname"
+
+# Analytics Service
+analytics:
+  enabled: true
+  name: analytics
+  image:
+    repository: url-shortener-analytics
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3002
+  config:
+    logLevel: info
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# User Management Service
+userManagement:
+  enabled: true
+  name: user-management
+  image:
+    repository: url-shortener-user-management
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3003
+  config:
+    logLevel: info
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Frontend
+frontend:
+  enabled: true
+  name: frontend
+  image:
+    repository: url-shortener-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 300m
+      memory: 384Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  config:
+    apiBaseUrl: "/api"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Database configurations
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    database: url_shortener
+    existingSecret: postgres-secrets
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+redis:
+  enabled: true
+  auth:
+    existingSecret: redis-secrets
+    existingSecretPasswordKey: password
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 200m
+        memory: 512Mi
+
+rabbitmq:
+  enabled: true
+  auth:
+    existingPasswordSecret: rabbitmq-secrets
+    existingErlangSecret: rabbitmq-secrets
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+# ClickHouse configuration (not available as a dependency, using custom deployment)
+clickhouse:
+  enabled: true
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: 23.8-alpine
+    pullPolicy: IfNotPresent
+  auth:
+    username: analytics
+    existingSecret: clickhouse-secrets
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: short.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+          port: 80
+    - host: api.short.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: url-shortener
+          port: 80
+  tls:
+    - secretName: url-shortener-tls
+      hosts:
+        - short.example.com
+        - api.short.example.com
+
+# Service Mesh Configuration
+serviceMesh:
+  enabled: true
+  istio:
+    enabled: true
+    gateway:
+      enabled: true
+      hosts:
+        - short.example.com
+        - api.short.example.com
+    virtualServices:
+      enabled: true
+    destinationRules:
+      enabled: true
+    peerAuthentication:
+      enabled: true
+      mtls: STRICT
+    authorizationPolicies:
+      enabled: true
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRules:
+    enabled: true
+  grafanaDashboards:
+    enabled: true
