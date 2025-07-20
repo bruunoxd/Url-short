@@ -147,8 +147,3 @@ npm run test:load
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-## 🔗 Links Úteis
-
-- [Documentação da API](docs/api.md)
-- [Guia de Deploy](docs/deployment.md)
-- [Runbook de Disaster Recovery](k8s/monitoring/disaster-recovery-runbook.md)
